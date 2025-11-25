@@ -202,3 +202,44 @@ def get_percentile_band(
     p50 = float(np.percentile(terminal_prices, 50))
     p83 = float(np.percentile(terminal_prices, upper * 100))
     return {"p17": p17, "p50": p50, "p83": p83}
+
+
+def summarize_scenario_percentiles(
+    scenario_results: dict, baseline_key: str = "base"
+) -> pd.DataFrame:
+    """
+    Create a concise table of percentile bands across scenarios.
+
+    Parameters
+    ----------
+    scenario_results:
+        Mapping of scenario key to result dict containing ``percentile_band``.
+    baseline_key:
+        Scenario key to use as the reference for delta calculations.
+
+    Returns
+    -------
+    pd.DataFrame
+        Table with columns: scenario, p17, p50, p83, median_delta.
+    """
+    if not scenario_results:
+        return pd.DataFrame(columns=["scenario", "p17", "p50", "p83", "median_delta"])
+
+    baseline = scenario_results.get(baseline_key)
+    baseline_median = None
+    if baseline:
+        baseline_band = baseline.get("percentile_band", {})
+        baseline_median = baseline_band.get("p50")
+
+    records = []
+    for key, result in scenario_results.items():
+        band = result.get("percentile_band", {}) or {}
+        p17 = band.get("p17")
+        p50 = band.get("p50")
+        p83 = band.get("p83")
+        median_delta = p50 - baseline_median if baseline_median is not None and p50 is not None else None
+        records.append(
+            {"scenario": key, "p17": p17, "p50": p50, "p83": p83, "median_delta": median_delta}
+        )
+
+    return pd.DataFrame(records)

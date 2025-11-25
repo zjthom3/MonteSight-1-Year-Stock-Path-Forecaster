@@ -19,7 +19,7 @@ def _sample_paths(paths: np.ndarray, n_sample_paths: int) -> np.ndarray:
     return paths[:, indices]
 
 
-def plot_price_paths(paths: np.ndarray, n_sample_paths: int = 50) -> None:
+def plot_price_paths(paths: np.ndarray, n_sample_paths: int = 50, key: str | None = None) -> None:
     """
     Plot a subset of simulated price paths over time.
 
@@ -50,10 +50,12 @@ def plot_price_paths(paths: np.ndarray, n_sample_paths: int = 50) -> None:
         template="plotly_white",
         height=400,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 
-def plot_terminal_distribution(terminal_prices: np.ndarray, percentile_band: dict[str, float]) -> None:
+def plot_terminal_distribution(
+    terminal_prices: np.ndarray, percentile_band: dict[str, float], key: str | None = None
+) -> None:
     """
     Plot histogram of terminal prices with percentile overlays.
 
@@ -74,9 +76,9 @@ def plot_terminal_distribution(terminal_prices: np.ndarray, percentile_band: dic
         )
     )
 
-    for key, color in zip(["p17", "p50", "p83"], ["#e67e22", "#34495e", "#e67e22"]):
+    for percentile_label, color in zip(["p17", "p50", "p83"], ["#e67e22", "#34495e", "#e67e22"]):
         fig.add_vline(
-            x=percentile_band.get(key),
+            x=percentile_band.get(percentile_label),
             line_width=2,
             line_dash="dash",
             line_color=color,
@@ -91,4 +93,4 @@ def plot_terminal_distribution(terminal_prices: np.ndarray, percentile_band: dic
         height=400,
         showlegend=False,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)

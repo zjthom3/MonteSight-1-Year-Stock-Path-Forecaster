@@ -6,3 +6,5 @@ plotly
 pytest
 openai
 python-dotenv
+openai[agents]
+openai-agents
