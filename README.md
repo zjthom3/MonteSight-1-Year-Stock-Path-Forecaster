@@ -7,6 +7,7 @@ MonteSight is a Streamlit app that uses historical price data to run Monte Carlo
 - Computes log returns, drift, and volatility
 - Simulates thousands of price paths with a GBM model
 - Shows 66%+ probability price targets, percentile bands, and clear visuals
+- Optional AI-generated summary if you provide an OpenAI API key
 
 ## Quickstart
 1. Install dependencies:
@@ -17,6 +18,9 @@ MonteSight is a Streamlit app that uses historical price data to run Monte Carlo
    ```bash
    streamlit run app.py
    ```
+
+### Optional: AI summary
+- Enter your OpenAI API key in the sidebar (or set `OPENAI_API_KEY` in a `.env` file) to get a concise AI-generated narrative interpretation of the simulation outputs. Without a key, the app shows the built-in summary.
 
 ## How the simulation works
 1. Download historical prices (default 5 years) and compute daily log returns.

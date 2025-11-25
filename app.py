@@ -30,6 +30,7 @@ def run_simulation_pipeline(user_inputs: dict) -> None:
     n_sims = user_inputs["n_sims"]
     prob_threshold = user_inputs["prob_threshold"]
     seed = user_inputs.get("seed")
+    openai_api_key = user_inputs.get("openai_api_key")
 
     df_prices = get_historical_data(ticker, period=period)
     log_returns = compute_log_returns(df_prices)
@@ -64,6 +65,7 @@ def run_simulation_pipeline(user_inputs: dict) -> None:
         percentile_band=percentile_band,
         horizon_days=horizon_days,
         prob_threshold=prob_threshold,
+        openai_api_key=openai_api_key,
     )
 
 

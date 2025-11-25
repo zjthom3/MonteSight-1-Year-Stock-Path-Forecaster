@@ -1,0 +1,9 @@
+# Environment & secrets
+.env
+
+# Bytecode caches
+__pycache__/
+*/__pycache__/
+
+# Streamlit cache
+.streamlit/

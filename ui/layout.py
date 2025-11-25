@@ -58,6 +58,12 @@ def render_sidebar_controls() -> dict:
     )
     seed = st.sidebar.text_input("Random Seed (optional)", value="")
     seed_val = safe_float(seed, default=None)
+    openai_api_key = st.sidebar.text_input(
+        "OpenAI API Key (optional for AI summary)",
+        value="",
+        type="password",
+        help="If provided, an AI-generated narrative summary will be shown.",
+    ).strip() or None
 
     run = st.sidebar.button("Run Simulation", type="primary")
 
@@ -68,6 +74,7 @@ def render_sidebar_controls() -> dict:
         "horizon_days": int(horizon_days),
         "prob_threshold": float(prob_threshold),
         "seed": int(seed_val) if seed_val is not None else None,
+        "openai_api_key": openai_api_key,
         "run": run,
     }
 
@@ -84,6 +91,7 @@ def render_main_results(
     percentile_band,
     horizon_days: int,
     prob_threshold: float,
+    openai_api_key: str | None = None,
 ) -> None:
     """
     Render the main dashboard content.
@@ -101,7 +109,15 @@ def render_main_results(
     components.probability_table(df_probs_filtered)
 
     st.subheader("Summary")
-    components.simulation_summary_box(percentile_band, horizon_days)
+    components.render_summary_section(
+        ticker=ticker,
+        s0=s0,
+        percentile_band=percentile_band,
+        horizon_days=horizon_days,
+        prob_threshold=prob_threshold,
+        df_probs_filtered=df_probs_filtered,
+        openai_api_key=openai_api_key,
+    )
     components.explanation_box(
         ticker=ticker,
         s0=s0,
