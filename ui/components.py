@@ -5,6 +5,7 @@ Reusable Streamlit UI components for MonteSight.
 from __future__ import annotations
 
 import os
+import time
 
 import pandas as pd
 import streamlit as st
@@ -20,105 +21,12 @@ def metric_cards(
 ) -> None:
     """
     Render key metrics for the forecast.
-
-    Parameters
-    ----------
-    s0:
-        Current price.
-    percentile_band:
-        Dictionary containing percentile values.
-    horizon_days:
-        Simulation horizon in days.
-    currency:
-        Currency code for formatting.
     """
     cols = st.columns(3)
     cols[0].metric("Current Price", format_currency(s0, currency))
     cols[1].metric("Median Forecast", format_currency(percentile_band.get("p50"), currency))
     band_text = f"{format_currency(percentile_band.get('p17'), currency)} - {format_currency(percentile_band.get('p83'), currency)}"
     cols[2].metric(f"~66% Range ({horizon_days}d)", band_text)
-
-
-def probability_table(df_probs_filtered: pd.DataFrame) -> None:
-    """
-    Render the filtered probability table.
-
-    Parameters
-    ----------
-    df_probs_filtered:
-        DataFrame with price levels and hit probabilities.
-    """
-    if df_probs_filtered is None or df_probs_filtered.empty:
-        st.info("No price levels meet the probability threshold. Try lowering the cutoff.")
-        return
-
-    df_display = df_probs_filtered.copy()
-    df_display["probability_%"] = (df_display["prob_hit"] * 100).round(2)
-    display_cols = ["price_level", "probability_%"]
-    if "direction" in df_display.columns:
-        display_cols.append("direction")
-    df_display = df_display[display_cols]
-    st.dataframe(
-        df_display,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "price_level": "Price Level",
-            "probability_%": "Hit Probability (%)",
-            "direction": "Direction (up/down)",
-        },
-    )
-
-
-def simulation_summary_box(percentile_band: dict[str, float], horizon_days: int) -> None:
-    """
-    Render a concise summary of the percentile band.
-
-    Parameters
-    ----------
-    percentile_band:
-        Dictionary with percentile values.
-    horizon_days:
-        Simulation horizon in days.
-    """
-    p17 = percentile_band.get("p17")
-    p50 = percentile_band.get("p50")
-    p83 = percentile_band.get("p83")
-    st.success(
-        f"Over the next {horizon_days} trading days, the median simulated price is {format_currency(p50)}. "
-        f"About two-thirds of outcomes fall between {format_currency(p17)} and {format_currency(p83)}."
-    )
-
-
-def _build_summary_prompt(
-    ticker: str,
-    s0: float,
-    percentile_band: dict[str, float],
-    prob_threshold: float,
-    df_probs_filtered: pd.DataFrame | None,
-    horizon_days: int,
-) -> str:
-    """Construct a concise prompt for the AI summary."""
-    top_targets = ""
-    if df_probs_filtered is not None and not df_probs_filtered.empty:
-        top = (
-            df_probs_filtered.sort_values("prob_hit", ascending=False)
-            .head(3)
-            .assign(prob_pct=lambda df: (df["prob_hit"] * 100).round(1))
-        )
-        lines = [f"- {row.price_level:.2f} ({row.prob_pct}%, {row.get('direction', 'n/a')})" for _, row in top.iterrows()]
-        top_targets = "\n".join(lines)
-
-    return f"""
-You are summarizing Monte Carlo simulation results for {ticker}.
-Current price: {s0:.2f}.
-Simulation horizon: {horizon_days} trading days.
-Percentile band: p17={percentile_band.get('p17'):.2f}, p50={percentile_band.get('p50'):.2f}, p83={percentile_band.get('p83'):.2f}.
-Targets shown have probability >= {prob_threshold:.0%}.
-Top probability targets:
-{top_targets if top_targets else '- none available -'}
-Write 2-3 short sentences, plain English, no financial advice, highlight upside/downside and central range.
-"""
 
 
 def _resolve_openai_key(provided_key: str | None) -> str | None:
@@ -174,99 +82,11 @@ def render_summary_section(
         simulation_summary_box(percentile_band, horizon_days)
 
 
-def explanation_box(
-    ticker: str,
-    s0: float,
-    percentile_band: dict[str, float],
-    prob_threshold: float,
-    currency: str = "USD",
-) -> None:
-    """
-    Render a natural-language explanation of the forecast.
-
-    Parameters
-    ----------
-    ticker:
-        Ticker symbol.
-    s0:
-        Current price.
-    percentile_band:
-        Dictionary with percentile values.
-    prob_threshold:
-        Probability threshold used for filtering.
-    currency:
-        Currency code for formatting.
-    """
-    p17 = percentile_band.get("p17")
-    p50 = percentile_band.get("p50")
-    p83 = percentile_band.get("p83")
-    st.markdown(
-        f"""
-**What this means for {ticker.upper()}**
-
-- Starting price: {format_currency(s0, currency)}
-- Median forecast: {format_currency(p50, currency)}
-- Most likely range (~66% confidence): {format_currency(p17, currency)} to {format_currency(p83, currency)}
-- Showing targets with ≥ {prob_threshold:.0%} probability of being hit or exceeded.
-"""
-    )
-
-
 def _scenario_label(key: str, config: dict[str, float] | None) -> str:
     """Resolve a readable scenario label."""
     if config and config.get("label"):
         return str(config["label"])
     return key.title()
-
-
-def _format_top_targets(df_probs_filtered: pd.DataFrame | None) -> str:
-    if df_probs_filtered is None or df_probs_filtered.empty:
-        return "No price levels meet the probability cutoff."
-    top = (
-        df_probs_filtered.sort_values("prob_hit", ascending=False)
-        .head(3)
-        .assign(prob_pct=lambda df: (df["prob_hit"] * 100).round(1))
-    )
-    lines = [
-        f"- {row.price_level:.2f} ({row.prob_pct}%, {row.get('direction', 'n/a')})"
-        for _, row in top.iterrows()
-    ]
-    return "\n".join(lines)
-
-
-def scenario_text_summary(
-    scenario_key: str,
-    config: dict[str, float],
-    percentile_band: dict[str, float],
-    prob_threshold: float,
-    df_probs_filtered: pd.DataFrame | None,
-    s0: float,
-    horizon_days: int,
-) -> None:
-    """
-    Render a compact narrative for a scenario using deterministic logic.
-    """
-    mu_delta = (config.get("mu_multiplier", 1.0) - 1.0) * 100
-    sigma_delta = (config.get("sigma_multiplier", 1.0) - 1.0) * 100
-    p17 = percentile_band.get("p17")
-    p50 = percentile_band.get("p50")
-    p83 = percentile_band.get("p83")
-
-    tone = "upside" if mu_delta >= 0 else "downside"
-    risk_note = (
-        "Key risks include any reversal of the recent positive tone and unexpected volatility spikes."
-        if mu_delta >= 0
-        else "Upside surprises or rapid volatility compression could invalidate this downside skew."
-    )
-
-    top_targets = _format_top_targets(df_probs_filtered)
-    label = _scenario_label(scenario_key, config)
-    paragraphs = [
-        f"**{label} assumptions:** Drift shift {mu_delta:+.1f}% vs base, vol shift {sigma_delta:+.1f}% vs base. {config.get('description', '').strip()}",
-        f"**Expected range:** Median outcome {format_currency(p50)} over {horizon_days} trading days with ~66% of paths between {format_currency(p17)} and {format_currency(p83)} (starting from {format_currency(s0)}). Targets ≥ {prob_threshold:.0%}:\n{top_targets}",
-        f"**Risks/uncertainty:** {risk_note}",
-    ]
-    st.markdown("\n\n".join(paragraphs))
 
 
 def render_scenario_comparison(
